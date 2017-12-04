@@ -10,12 +10,41 @@ from passlib.hash import bcrypt_sha256
 from sqlalchemy import ForeignKey
 from werkzeug.routing import Rule
 
-from CTFd.models import db, Teams
 from CTFd import utils
+from CTFd.models import db, Teams
+from CTFd.plugins import register_plugin_asset
 from models import Classification, create_db
 
 def load(app):
     create_db(app)
+    classification = Blueprint('classification', __name__, template_folder='templates')
+
+    @classification.route('/admin/plugins/classify', methods=['GET', 'POST'])
+    @utils.admins_only
+    def classify():
+        if request.method == 'POST':
+            errors = []
+            teamid = request.form['id']
+            classification = request.form['classification']
+
+            if classification == 'other':
+                newclassification = request.form['newclassification']
+
+            return '', 200
+        else:
+            classifications = []
+            for classification in db.session.query(Classification.classification).distinct():
+                classifications.append(classification[0])
+            teams = []
+            for team in db.session.query(Teams.name).all():
+                teams.append(team[0])
+
+            db.session.close()
+
+            teams = sorted(teams)
+            classifications = sorted(classifications)
+
+            return render_template('manual.html', teams=teams, classifications=classifications)
 
     def register():
         logger = logging.getLogger('regs')
@@ -97,3 +126,4 @@ def load(app):
             return render_template('register.html')
 
     app.view_functions['auth.register'] = register
+    app.register_blueprint(classification)
