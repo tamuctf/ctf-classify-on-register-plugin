@@ -28,7 +28,9 @@ def load(app):
             classification = request.form['classification']
 
             if classification == 'other':
-                newclassification = request.form['newclassification']
+                classification = request.form['new_classification']
+
+            #db.session.update(Teams).where(Teams.id==teamid).values(classification=classification)
 
             return '', 200
         else:
@@ -36,8 +38,9 @@ def load(app):
             for classification in db.session.query(Classification.classification).distinct():
                 classifications.append(classification[0])
             teams = []
-            for team in db.session.query(Teams.name).all():
-                teams.append(team[0])
+            for team in db.session.query(Teams.name, Teams.id).all():
+                teams.append({'name': team[0], 'teamid': team[1]})
+                
 
             db.session.close()
 
