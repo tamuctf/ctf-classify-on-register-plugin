@@ -234,6 +234,8 @@ def load(app):
                         classification = Classification(team.id, get_classification(username))
                         print classification
                         print classification.id
+                    else:
+                        classification = Classification(team.id, "public")
                         
                     db.session.add(classification)
                     db.session.commit()
