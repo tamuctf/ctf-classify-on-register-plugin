@@ -18,7 +18,6 @@ import os
 import re
 import time
 
-
 from flask import current_app as app, render_template, request, redirect, url_for, session, Blueprint
 from itsdangerous import TimedSerializer, BadTimeSignature, Signer, BadSignature
 from passlib.hash import bcrypt_sha256
@@ -68,19 +67,22 @@ tdElements = []
 
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-#-=-=-=-=-=-Classes-=-=-=-=-=-
+#-=-=-=-=-=-Classes-=-=-=-=-=-  
 class Classification(db.Model):
     __table_args__ = {'extend_existing': True} 
     id = db.Column(db.Integer, ForeignKey('teams.id'), primary_key=True)
     teamid = db.Column(db.Integer)
     classification = db.Column(db.String(128))
+    other = db.Column(db.Integer)
 
     def __init__(self,id, classification):
         self.id = id
         self.teamid = id
         self.classification = classification
 
-        
+    def add_other(self, other):
+        self.other = other
+    
 class MyHTMLParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         if tag != 'a':
@@ -107,7 +109,6 @@ class TableParser(HTMLParser):
 
     def handle_endtag(self, tag):
         self.in_td = False
-
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 def load(app):
@@ -118,6 +119,9 @@ def load(app):
 
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-  # This function has to be completely changed
     # -=-=-=-=A&M-Specific-=-=-=-=-  # if altering the organization is desired
+
+    template_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'register.html')
+    override_template('register.html', open(template_path).read())
                                     
 
     def get_classification(user):
@@ -178,7 +182,61 @@ def load(app):
                 return element
             if goal == element:
                 reached = True
+      
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+    @app.route('/tamu/', methods=['GET'])
+    def tamu_scores():
+        if request.method == 'GET':
+            classifications = Classification.query.all()
+            standings = get_standings()
+            teams=[]
+            for i, x in enumerate(standings):
+                pushed = 0
+                for c in classifications:
+                    if c.teamid == x.teamid and len(c.classification) == 2:
+                        if c.classification[0].isupper() and c.classification[1].isdigit():
+
+                          teams.append({'id': x.teamid, 'name': x.name, 'class': c.classification , 'score': x.score})
+                          pushed = 1
+                          break
+                    print c.classification
+            return jsonify(teams)
+
+    @app.route('/tamuu/', methods=['GET'])
+    def tamu_scores_u():
+        if request.method == 'GET':
+            classifications = Classification.query.all()
+            standings = get_standings()
+            teams=[]
+            for i, x in enumerate(standings):
+                pushed = 0
+                for c in classifications:
+                    if c.teamid == x.teamid and len(c.classification) == 2:
+                        if c.classification[0]=='U' and c.classification[1].isdigit():
+                          teams.append({'id': x.teamid, 'name': x.name, 'class': c.classification , 'score': x.score})
+                          pushed = 1
+                          break
+                    print c.classification
+            return jsonify(teams)
+
+    @app.route('/tamug/', methods=['GET'])
+    def tamu_scores_g():
+        if request.method == 'GET':
+            classifications = Classification.query.all()
+            standings = get_standings()
+            teams=[]
+            for i, x in enumerate(standings):
+                pushed = 0
+                for c in classifications:
+                    if c.teamid == x.teamid and len(c.classification) == 2:
+                        if c.classification[0]=='G' and c.classification[1].isdigit():
+                          teams.append({'id': x.teamid, 'name': x.name, 'class': c.classification , 'score': x.score})
+                          pushed = 1
+                          break
+                    print c.classification
+            return jsonify(teams)
+    
 
 
     # Note: A&M students have "[text]@tamu.edu" as email addresses.
@@ -192,6 +250,21 @@ def load(app):
             name = request.form['name']
             email = request.form['email']
             password = request.form['password']
+            
+            #-=-=-=-=-=-=-=-=- Please find a better way of doing this
+            try:
+                corps = request.form['corps']
+            except:
+                corps = "off"
+            try:
+                rotc = request.form['rotc']
+            except:
+                rotc = "off"
+            try:
+                dod = request.form['dod']
+            except:
+                dod = "off"
+            #-=-=-=-=-=-=-=-=- 
 
             name_len = len(name) == 0
             names = Teams.query.add_columns('name', 'id').filter_by(name=name).first()
@@ -232,10 +305,19 @@ def load(app):
                     if domain == "tamu.edu": #Change this line to alter the domain filter for emails
                         print session
                         classification = Classification(team.id, get_classification(username))
-                        print classification
-                        print classification.id
                     else:
                         classification = Classification(team.id, "public")
+                    
+                    other = 0
+                    if corps == "on":
+                        other += 3
+                    if rotc == "on":
+                        other += 5
+                    if dod == "on":
+                        other += 7
+                    
+
+                    classification.add_other(other)
                         
                     db.session.add(classification)
                     db.session.commit()
@@ -270,4 +352,10 @@ def load(app):
 
     app.view_functions['auth.register'] = register
     app.register_blueprint(autoRegister)
+
+
+# -=-=-=-=-=-=-=-=-=- TAMU's Scoreboard Function -=-=-=-=-=-=-
+def tamu_test():
+    return "This is defined"
+
 
