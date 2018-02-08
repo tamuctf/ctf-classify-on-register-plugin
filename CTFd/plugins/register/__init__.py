@@ -93,7 +93,6 @@ class MyHTMLParser(HTMLParser):
         if m:
             uids.append(m.group(0)[4:-1])
 
-
 class TableParser(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
@@ -304,7 +303,10 @@ def load(app):
                     classification = Classification(session['id'], 'PUBLIC')
                     if domain == "tamu.edu": #Change this line to alter the domain filter for emails
                         print session
-                        classification = Classification(team.id, get_classification(username))
+                        try:
+                          classification = Classification(team.id, get_classification(username))
+                        except:
+                          classification = Classification(team.id, "UNKNOWN")
                     else:
                         classification = Classification(team.id, "public")
                     
